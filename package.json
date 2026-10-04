@@ -1,0 +1,29 @@
+{
+  "name": "beyond-the-glass",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Immersive 3D virtual museum - React client + Express API",
+  "type": "module",
+  "scripts": {
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "npm start --prefix server",
+    "models:optimize": "node scripts/optimize-models.js",
+    "models:thumbnails": "node scripts/generate-thumbnails.js",
+    "seed": "npm run seed --prefix server"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "concurrently": "^10.0.5",
+    "draco3dgltf": "^1.5.7",
+    "meshoptimizer": "^1.3.0",
+    "puppeteer": "^25.12.0",
+    "sharp": "^0.35.5",
+    "three": "^0.186.1"
+  }
+}
