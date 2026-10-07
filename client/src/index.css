@@ -1,0 +1,118 @@
+/* Self-hosted fonts (bundled by Vite, so they also work offline) */
+@import "@fontsource-variable/bodoni-moda/opsz.css";
+@import "@fontsource-variable/hanken-grotesk";
+@import "tailwindcss";
+
+/*
+  Design tokens - the ONLY place colours and fonts are defined.
+  Tailwind v4 turns each variable into utilities, e.g.
+    --color-canvas  -> bg-canvas, text-canvas, border-canvas
+    --font-display  -> font-display
+*/
+@theme {
+  /* Fonts: a Didone serif for titles (like exhibition catalogues), a plain grotesque for
+     reading text and labels (like museum wall labels) */
+  --font-display: "Bodoni Moda Variable", "Bodoni 72", Georgia, serif;
+  --font-sans: "Hanken Grotesk Variable", system-ui, sans-serif;
+
+  /* Surfaces (light theme): warm gallery-wall white, from the page background to raised panels */
+  --color-canvas: #f6f3ee;
+  --color-surface: #fffdf9;
+  --color-raised: #ebe6dd;
+  --color-line: #d9d2c6;
+
+  /* Text: warm near-black, plus two quieter tones for secondary text */
+  --color-ink: #1f1c18;
+  --color-ink-muted: #4d463d;
+  --color-ink-subtle: #645b50;
+
+  /* Accent: gilt-frame gold, dark enough to read as text on the light background.
+     gold-bright = hover state, gold-deep = decorative borders/frames */
+  --color-gold: #7d5f27;
+  --color-gold-bright: #5f4719;
+  --color-gold-deep: #c4a463;
+
+  /* Dark band used by the footer (light text on near-black) */
+  --color-night: #1f1c18;
+  --color-night-ink: #f1ebe0;
+  --color-night-muted: #bdb4a6;
+
+  /* Feedback */
+  --color-danger: #b42318;
+
+  /* Loading bar: a short gold segment sliding along a line (class: animate-loader) */
+  --animate-loader: loader 1.2s ease-in-out infinite;
+  @keyframes loader {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+  }
+
+}
+
+@layer base {
+  /* Native controls (dropdowns, file pickers, scrollbars) use their light styling */
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+
+  /* Medium weight: Bodoni's hairline strokes are too faint at normal weight on a light background */
+  h1, h2, h3 {
+    @apply font-display font-medium text-balance;
+  }
+
+  /* Bodoni Moda changes its design with size ("optical size"): at large sizes its thin strokes
+     become hairlines that almost vanish on a light background. Always using the small-size
+     design (opsz 12) keeps every stroke clearly visible. */
+  h1, h2, h3, .font-display {
+    font-variation-settings: 'opsz' 12;
+  }
+
+  ::selection {
+    @apply bg-gold text-canvas;
+  }
+
+  /* Clear keyboard focus everywhere (mouse clicks don't show it) */
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+  }
+
+  /* Respect the operating system's "reduce motion" setting */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Shared component styles, defined once and reused across pages */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-sm px-5 py-2.5 text-sm font-medium
+      transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-gold text-canvas hover:bg-gold-bright;
+  }
+  .btn-outline {
+    @apply border border-gold/60 text-gold hover:border-gold hover:bg-gold/10;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm text-ink-muted;
+  }
+  .field-input {
+    @apply w-full rounded-sm border border-line bg-surface px-3 py-2.5 text-ink placeholder:text-ink-subtle
+      focus:border-gold focus:outline-none;
+  }
+
+  /* Content width + side padding used by every page */
+  .page-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+}
