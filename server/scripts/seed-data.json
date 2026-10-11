@@ -1,0 +1,111 @@
+{
+  "_instructions": [
+    "Data used by `npm run seed`. Replace every TODO before your demo.",
+    "users: the demo accounts. Change the passwords if the site will be public.",
+    "exhibitions: 'key' is only used inside this file to connect artifacts to an exhibition.",
+    "artifacts: one entry per model. 'model' is the file name in server/uploads/models (created by npm run models:optimize).",
+    "The thumbnail is found automatically: server/uploads/thumbnails/<model name>.webp (created by npm run models:thumbnails).",
+    "'exhibition' is an exhibition key or null. Artifacts appear in the guided tour in the order they are listed here.",
+    "Optional artifact fields: material, tags (array), hotspots ([{ position: [x, y, z] in the model's own coordinates, title, text }]), cameraPosition ([x, y, z]: the direction the 3D viewer looks from; default [2.5, 1.5, 3]).",
+    "quizzes: one per exhibition ('exhibition' = its key). answerIndex is the position of the right option, counting from 0."
+  ],
+  "users": [
+    {
+      "name": "Museum Admin",
+      "email": "admin@museum.test",
+      "password": "admin12345",
+      "role": "admin"
+    },
+    {
+      "name": "Museum Curator",
+      "email": "curator@museum.test",
+      "password": "curator12345",
+      "role": "curator"
+    },
+    {
+      "name": "Museum Visitor",
+      "email": "visitor@museum.test",
+      "password": "visitor12345",
+      "role": "visitor"
+    }
+  ],
+  "exhibitions": [
+    {
+      "key": "exhibition-1",
+      "title": "TODO: Exhibition One",
+      "description": "TODO: what this exhibition is about",
+      "theme": "",
+      "isPublished": true
+    },
+    {
+      "key": "exhibition-2",
+      "title": "TODO: Exhibition Two",
+      "description": "TODO: what this exhibition is about",
+      "theme": "",
+      "isPublished": true
+    },
+    {
+      "key": "exhibition-3",
+      "title": "TODO: Exhibition Three",
+      "description": "TODO: what this exhibition is about",
+      "theme": "",
+      "isPublished": false
+    }
+  ],
+  "artifacts": [
+    {
+      "model": "active-cavity-irradiance-monitor-satellite-acrimsat-b.glb",
+      "exhibition": "exhibition-1",
+      "title": "Active Cavity Irradiance Monitor Satellite (AcrimSAT) (B)",
+      "description": "TODO: a few sentences about this artifact",
+      "era": "TODO",
+      "region": "TODO",
+      "category": "TODO",
+      "material": "",
+      "tags": [],
+      "credits": {
+        "author": "TODO",
+        "sourceUrl": "TODO",
+        "license": "TODO"
+      },
+      "hotspots": [
+        {
+          "position": [
+            211.7,
+            2132.71,
+            170.97
+          ],
+          "title": "ACRIM III instrument",
+          "text": "The instrument on top measured the total energy coming from the Sun."
+        },
+        {
+          "position": [
+            -7.51,
+            -220.02,
+            2256.52
+          ],
+          "title": "Main body",
+          "text": "The eight-sided body held the power, radio and computer systems."
+        },
+        {
+          "position": [
+            5453.51,
+            1754.28,
+            1452.3
+          ],
+          "title": "Solar panel",
+          "text": "Four panels like this one turned sunlight into electricity for the satellite."
+        },
+        {
+          "position": [
+            -90.92,
+            -220.02,
+            -2242.9
+          ],
+          "title": "Far side of the body",
+          "text": "The tour turns the satellite around so you can see this side too."
+        }
+      ]
+    }
+  ]
+}
