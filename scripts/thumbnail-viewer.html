@@ -1,0 +1,110 @@
+<!doctype html>
+<!--
+  Minimal three.js page used by generate-thumbnails.js.
+  Loads /models/<file> (from ?model=<file>), frames it, renders ONE frame,
+  then sets window.renderStatus so the script knows when to take the screenshot.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Thumbnail viewer</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: transparent; }
+      canvas { display: block; }
+    </style>
+    <!-- Lets the browser resolve "three" imports to the files served from node_modules/three -->
+    <script type="importmap">
+      { "imports": { "three": "/three/build/three.module.js", "three/addons/": "/three/examples/jsm/" } }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+      const SIZE = 600;
+
+      // preserveDrawingBuffer keeps the rendered frame on the canvas so the screenshot can capture it
+      // alpha: true + no scene background = a transparent image, so thumbnails blend into any page colour
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(SIZE, SIZE);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      document.body.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+
+      // Lighting: RoomEnvironment is a built-in "photo studio" that lights metallic/PBR
+      // materials evenly from all sides; the directional light adds some shading and depth.
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      keyLight.position.set(3, 5, 4);
+      scene.add(keyLight);
+
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
+
+      // The optimized models use Draco compression, so GLTFLoader needs the Draco decoder
+      const loader = new GLTFLoader();
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('/three/examples/jsm/libs/draco/gltf/');
+      loader.setDRACOLoader(dracoLoader);
+
+      const modelFile = new URLSearchParams(location.search).get('model');
+
+      try {
+        const gltf = await loader.loadAsync(`/models/${encodeURIComponent(modelFile)}`);
+        const model = gltf.scene;
+        scene.add(model);
+
+        // 1. Measure the model with an axis-aligned bounding box
+        const box = new THREE.Box3().setFromObject(model);
+        if (box.isEmpty()) throw new Error('model has no visible geometry');
+
+        // 2. Move the model so its centre sits at the origin (0, 0, 0)
+        model.position.sub(box.getCenter(new THREE.Vector3()));
+        model.updateMatrixWorld(true);
+
+        // 3. Point the camera at the origin from a 3/4 angle (right, slightly above, in front)
+        const viewDirection = new THREE.Vector3(1, 0.6, 1.2).normalize();
+        camera.position.copy(viewDirection);
+        camera.lookAt(0, 0, 0);
+        camera.updateMatrixWorld();
+        const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+
+        // 4. Find how far back the camera must be so that EVERY vertex of the model is in view.
+        //    (Using real vertices, not the bounding box corners, gives a tight fit for
+        //    X-shaped or round models whose box corners are empty space.)
+        //    A point that is `sideways` units off-centre (as seen from the camera) and
+        //    `toward` units closer to the camera fits when: distance >= toward + sideways / tan(fov / 2)
+        const FILL = 0.9; // the model fills 90% of the image
+        const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * FILL;
+        const point = new THREE.Vector3();
+        let distance = 0;
+        model.traverse((object) => {
+          if (!object.isMesh) return;
+          const positions = object.geometry.attributes.position;
+          for (let i = 0; i < positions.count; i += 1) {
+            point.fromBufferAttribute(positions, i).applyMatrix4(object.matrixWorld); // vertex in world space
+            const sideways = Math.max(Math.abs(point.dot(cameraRight)), Math.abs(point.dot(cameraUp)));
+            distance = Math.max(distance, point.dot(viewDirection) + sideways / tanHalfFov);
+          }
+        });
+
+        camera.position.copy(viewDirection.multiplyScalar(distance));
+        camera.near = distance / 100; // near/far scaled to the model so tiny and huge models both render
+        camera.far = distance * 100;
+        camera.updateProjectionMatrix();
+
+        renderer.render(scene, camera);
+        // Wait one frame so the browser has painted the canvas before we report "ok"
+        requestAnimationFrame(() => (window.renderStatus = 'ok'));
+      } catch (error) {
+        window.renderStatus = `error: ${error.message}`;
+      }
+    </script>
+  </body>
+</html>
