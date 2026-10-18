@@ -19,10 +19,9 @@ app.set('trust proxy', 1);
 // (port 5173), so it must be allowed to load the files in /uploads (models, thumbnails).
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// Allow the React dev server (or deployed client) to call this API
+// Allow the React client (e.g. http://localhost:5173) to call this API
 app.use(
   cors({
-    // One or more allowed origins, comma-separated (e.g. the Vercel URL and a custom domain)
     origin: (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((url) => url.trim()),
     credentials: true,
   })

@@ -25,24 +25,23 @@ Curators and admins also get a **dashboard** (`/dashboard`): upload artifacts wi
 | 3D | three.js, @react-three/fiber 9, @react-three/drei 10, `.glb` models with Draco compression |
 | Backend | Node.js 22, Express 5 (REST), JWT + bcrypt, multer, helmet, express-rate-limit |
 | Database | MongoDB with Mongoose 9 (metadata and file URLs only, never the model files) |
-| File storage | Local disk in development, Cloudinary in production |
+| File storage | Local disk storage (`server/uploads/`) |
 | Tooling | glTF-Transform (model optimization), Puppeteer (thumbnails), concurrently, nodemon |
-| Hosting | Vercel (client), Render (API), MongoDB Atlas (database) |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
   subgraph Browser
-    UI["React app<br/>(Vercel)"]
+    UI["React app<br/>(localhost:5173)"]
     R3F["3D viewer<br/>React Three Fiber"]
   end
-  subgraph API["Express API (Render)"]
+  subgraph API["Express API<br/>(localhost:5000)"]
     Routes["Routes + middleware<br/>verifyToken, requireRole,<br/>rate limits, multer"]
     Ctrl["Controllers"]
   end
-  DB[("MongoDB Atlas<br/>metadata + file URLs")]
-  Files[("Cloudinary<br/>(or /server/uploads locally)<br/>.glb models, thumbnails")]
+  DB[("MongoDB<br/>metadata + file paths")]
+  Files[("Local disk (/server/uploads)<br/>.glb models, thumbnails")]
 
   UI -- "REST / JSON + JWT" --> Routes --> Ctrl
   Ctrl -- Mongoose --> DB
@@ -152,29 +151,27 @@ Curl examples for every route: [docs/api-test-plan.md](docs/api-test-plan.md).
 
 ```
 beyond-the-glass/
-├── client/                 React app (Vite)        → deployed to Vercel (client/vercel.json)
+├── client/                 React app (Vite)
 │   ├── public/draco/       Draco decoder for compressed models (served locally, works offline)
 │   └── src/
 │       ├── api/axios.js    axios instance, JWT header, fileUrl()
 │       ├── components/     cards, navbar, skeletons, dashboard widgets
-│       │   └── viewer/     the 3D viewer: ModelViewer, Model, FitCamera, CameraFocus,
-│       │                   HotspotMarkers + HotspotTracker, lighting presets
+│       │   └── viewer/     the 3D viewer: ModelViewer, Model, FitCamera, lighting presets
 │       ├── context/        AuthContext (logged-in user)
 │       ├── hooks/          useApi, useAuth, useDebouncedValue, useObjectUrl, ...
 │       └── pages/          one component per route; pages/dashboard/ for curators
-├── server/                 Express API             → deployed to Render (render.yaml)
+├── server/                 Express API
 │   ├── config/db.js        Mongoose connection
 │   ├── controllers/        request handling
 │   ├── middleware/         verifyToken, requireRole, upload, rate limits, error handler
-│   ├── models/             User, Artifact, Exhibition, Quiz, QuizAttempt
+│   ├── models/             User, Artifact, Exhibition
 │   ├── routes/             URL → controller
 │   ├── scripts/            seed.js + seed-data.json, setRole.js
-│   ├── utils/files.js      file storage: local disk or Cloudinary
-│   └── uploads/            local files (development only, git-ignored)
+│   ├── utils/files.js      file storage on local disk
+│   └── uploads/            local files (.glb models and .webp thumbnails)
 ├── scripts/                optimize-models.js, generate-thumbnails.js
 ├── raw-models/             downloaded source models
-├── docs/                   api-test-plan.md, screenshots/
-└── render.yaml             Render Blueprint for the API
+└── docs/                   api-test-plan.md, screenshots/
 ```
 
 ## Local setup
@@ -207,58 +204,23 @@ Demo logins created by the seed: `admin@museum.test` / `admin12345`, `curator@mu
 
 ## Environment variables
 
-### Server (`server/.env` locally, Render → Environment in production)
+### Server (`server/.env`)
 
 | Variable | Example | Required | Purpose |
 | --- | --- | --- | --- |
-| `NODE_ENV` | `production` | prod | Hides error details from API responses |
-| `PORT` | `5000` | no | Port to listen on (Render sets it) |
-| `MONGO_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/beyond-the-glass` | yes | Database connection |
-| `JWT_SECRET` | 64+ random characters | yes | Signs login tokens (the server refuses to start without it) |
+| `NODE_ENV` | `development` | no | Environment mode |
+| `PORT` | `5000` | no | Port to listen on (default 5000) |
+| `MONGO_URI` | `mongodb://127.0.0.1:27017/beyond-the-glass` | yes | Database connection string |
+| `JWT_SECRET` | 64+ random characters | yes | Signs login tokens |
 | `JWT_EXPIRES_IN` | `7d` | no | How long a login lasts |
-| `CLIENT_URL` | `https://beyond-the-glass.vercel.app` | yes | Allowed browser origin(s) for CORS, comma-separated |
-| `STORAGE_DRIVER` | `local` or `cloudinary` | no (default `local`) | Where uploaded models and images go |
-| `CLOUDINARY_URL` | `cloudinary://KEY:SECRET@CLOUD_NAME` | when `cloudinary` | Cloudinary account (Dashboard → API environment variable) |
+| `CLIENT_URL` | `http://localhost:5173` | yes | Allowed browser origin for CORS |
+| `STORAGE_DRIVER` | `local` | no | Stored locally in `server/uploads` |
 
-### Client (`client/.env` locally, Vercel → Settings → Environment Variables)
+### Client (`client/.env`)
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
-| `VITE_API_URL` | `https://beyond-the-glass-api.onrender.com/api` | API base URL. Built into the JavaScript, so **redeploy** after changing it |
-
-## Deployment
-
-### 1. Database: MongoDB Atlas
-1. Create a free M0 cluster at cloud.mongodb.com.
-2. **Database Access**: add a user with a password. **Network Access**: allow `0.0.0.0/0` (Render's free tier has no fixed IP).
-3. **Connect → Drivers**: copy the `mongodb+srv://...` string, add the database name: `.../beyond-the-glass?retryWrites=true&w=majority`.
-
-### 2. File storage: Cloudinary
-Render's free web services have **no persistent disk**: files written to `server/uploads` disappear on every restart or deploy. So in production set `STORAGE_DRIVER=cloudinary`: models are uploaded as *raw* files and thumbnails/covers as *images*.
-1. Create a free account at cloudinary.com.
-2. Copy the **API environment variable** (`cloudinary://...`) from the dashboard.
-
-Note: Cloudinary's free plan limits single files to about 10 MB, so upload optimized models (`npm run models:optimize`), which are usually far smaller.
-
-### 3. Seed the production data (from your computer)
-The demo models and thumbnails live on your computer, so seed from there, pointing at Atlas and Cloudinary:
-```bash
-# in server/, temporarily set these in .env (or in the shell):
-#   MONGO_URI=<Atlas string>  STORAGE_DRIVER=cloudinary  CLOUDINARY_URL=<cloudinary://...>
-npm run seed      # uploads each model and thumbnail to Cloudinary, stores their https URLs
-```
-Switch `.env` back to your local values afterwards.
-
-### 4. API: Render
-1. Push the repo to GitHub.
-2. Render → **New → Blueprint** → choose the repo. `render.yaml` creates the `beyond-the-glass-api` web service (root `server/`, `npm start`, health check `/api/health`) and generates `JWT_SECRET`.
-3. Enter `MONGO_URI`, `CLOUDINARY_URL` and `CLIENT_URL` (your Vercel URL, filled in after step 5) when asked.
-4. Check `https://<service>.onrender.com/api/health` shows `"database":"connected"`. The free instance sleeps after 15 idle minutes; the first request then takes up to a minute.
-
-### 5. Client: Vercel
-1. Vercel → **Add New → Project** → import the repo, set **Root Directory** to `client` (framework: Vite; `client/vercel.json` adds the SPA rewrite so links like `/artifacts/x` work on refresh).
-2. Add `VITE_API_URL` = `https://<service>.onrender.com/api` and deploy.
-3. Put the Vercel URL into Render's `CLIENT_URL` (Render redeploys automatically).
+| `VITE_API_URL` | `http://localhost:5000/api` | API base URL for client requests |
 
 ## Screenshots
 
